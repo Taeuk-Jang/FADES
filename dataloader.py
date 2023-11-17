@@ -15,8 +15,74 @@ min_max_scaler = MaxAbsScaler()
 
 kwargs = {"shuffle": True, "num_workers": 16, "pin_memory": True}
 
-def ImageLoader(dataname='celebA'):
-    if dataname == 'celebA':
+
+def load_transform(dataname='celeba'):
+    
+    if dataname == 'celeba':
+        mean = [0.485, 0.456, 0.406]
+        std = [0.229, 0.224, 0.225]
+        img_size = 128
+        crop_size = 128
+
+        orig_w = 178
+        orig_h = 218
+        orig_min_dim = min(orig_w, orig_h)
+
+        transform = transforms.Compose([
+            transforms.CenterCrop(orig_min_dim),
+            transforms.Resize(img_size),
+            transforms.ToTensor(),
+        #     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ])
+
+        transform_test = transforms.Compose([
+            transforms.CenterCrop(orig_min_dim),
+            transforms.Resize(img_size),
+            transforms.ToTensor(),
+        #     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ])
+        
+    elif dataname == 'UTK':
+        mean = [0.485, 0.456, 0.406]
+        std = [0.229, 0.224, 0.225]
+        img_size = 128
+        crop_size = 128
+
+        transform = transforms.Compose([
+            transforms.Resize((img_size, img_size)),
+            transforms.ToTensor(),
+        #     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ])
+
+        transform_test = transforms.Compose([
+            transforms.Resize((img_size, img_size)),
+            transforms.ToTensor(),
+        #     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ])
+        
+    elif dataname == 'dnc':
+        mean = [0.485, 0.456, 0.406]
+        std = [0.229, 0.224, 0.225]
+        img_size = 128
+        crop_size = 128
+
+        transform = transforms.Compose([
+            transforms.Resize((img_size, img_size)),
+            transforms.ToTensor(),
+        #     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ])
+
+        transform_test = transforms.Compose([
+            transforms.Resize((img_size, img_size)),
+            transforms.ToTensor(),
+        #     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ])
+        
+    
+    return transform, transform_test
+
+def ImageLoader(dataname='celeba'):
+    if dataname == 'celeba':
         root_dir = '/data/celebA/CelebA'
 
         data = pd.read_csv(os.path.join(root_dir, 'Anno/list_attr_celeba.csv'))

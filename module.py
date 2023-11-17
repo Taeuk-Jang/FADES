@@ -1,5 +1,4 @@
 import numpy as np
-
 import torch
 from torch import nn
 from torch.nn import Parameter
@@ -128,6 +127,19 @@ class MLP(nn.Module):
         x = self.dense2(x)
         return x
 
+    
+# class Classifier(nn.Module):
+#     def __init__(self, input_dim = 32, hidden_dim = 128, output_dim = 1):
+#         super(Classifier, self).__init__()
+#         self.input_dim = input_dim 
+#         self.dense1 = nn.Linear(input_dim, hidden_dim)
+#         self.dense2 = nn.Linear(hidden_dim, output_dim)
+        
+#     def forward(self, x):
+#         x = torch.relu(self.dense1(x))
+#         x = self.dense2(x)
+#         return x
+    
     
 class Classifier(nn.Module):
     def __init__(self, input_dim = 512, hidden_dim = 256, output_dim = 1):
