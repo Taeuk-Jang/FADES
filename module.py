@@ -7,7 +7,6 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 from torch.distributions.multivariate_normal import MultivariateNormal
 
-from utils import init_weights
 from scipy.optimize import linear_sum_assignment
 import torchvision.models as models
 
