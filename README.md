@@ -1,13 +1,11 @@
-This is supplementary material of ``FADES: Fair Disentanglement with Sensitive Relevance'' for NeurIPS 2023 submission.
+This is supplementary material of ``FADES: Fair Disentanglement with Sensitive Relevance'' for CVPR 2024 submission.
 
 This repository contains the following files:
-	NIPS23_train_cv.py: This python file is to train FADES on CelebA dataset
-	NIPS23-Tab.ipynb: This notebook contains training of 3 versions (CMI, CI, COV) of FADES on 			Tabular (adult) dataset.
-	module.py: This contains modules for various domains.
-	dataloader.py: This is data loader for CelebA dataset.
+	train_FADES.py: This python file is to train FADES on CelebA dataset
+	FADES-Colored MNIST.ipynb: This notebook contains training of FADES on C-MNIST dataset.
+	module.py: This contains modules for various domains and methods.
+	dataloader.py: This is dataloader to load dataset.
 	utils.py: This contains loss calculation and etc.
-
-
 
 To download the dataset, please visit the following websites and follow the instruction:
 	Adult dataset: https://github.com/Trusted-AI/AIF360
