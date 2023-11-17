@@ -16,3 +16,4 @@ This repository contains the following files:
 To download the dataset, please visit the following websites and follow the instructions:
 - Adult dataset: https://github.com/Trusted-AI/AIF360
 - CelebA dataset: https://mmlab.ie.cuhk.edu.hk/projects/CelebA.html
+- C-MNIST dataset: https://github.com/alinlab/LfF/tree/master
