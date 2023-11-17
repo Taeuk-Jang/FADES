@@ -11,7 +11,7 @@ This repository contains the following files:
 - utils.py: This contains loss calculation and etc.
 
 - save: contains oracle digit and color classifiers on C-MNIST data, and trained fades model.
-- data: contains C-MNIST dataset with 95% color bias.
+- data: contains C-MNIST dataset with 70% color bias.
 
 To download the dataset, please visit the following websites and follow the instructions:
 - Adult dataset: https://github.com/Trusted-AI/AIF360
