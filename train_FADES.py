@@ -41,11 +41,12 @@ parser.add_argument("--lambda_cls", type=float, default=1e3)
 parser.add_argument("--lambda_tc", type=float, default=1e2)
 parser.add_argument("--lambda_fair", type=float, default=1e2)
 parser.add_argument("--log_name", type=str, default='')
+parser.add_argument("--dataname", type=str, default='celeba')
 parser.add_argument("--label", type=str, default='Smiling')
 parser.add_argument("--resume", type=bool, default=False)
 args = parser.parse_args()
 
-args.log_name += '{:.1f}_{:.1f}_{:.1f}_{:.1f}_{:.1f}'.format(args.lambda_cls, args.lambda_tc, args.lambda_fair, args.alpha, args.beta)
+args.log_name += 'FADES_{:.1f}_{:.1f}_{:.1f}_{:.1f}_{:.1f}'.format(args.lambda_cls, args.lambda_tc, args.lambda_fair, args.alpha, args.beta)
 # based on IntroVAE
 dataname = f'{args.dataname}'
 
@@ -58,12 +59,11 @@ os.makedirs(save_dir, exist_ok = True)
 
 # init log
 with open(os.path.join(save_dir, "log.txt"), "a") as f:
-    f.write(" ".join(sys.argv))
+    f.write(" ".join(sys.argv)+'\n')
     
 def write_loss_to_log(logging):
     with open(os.path.join(save_dir, "log.txt"), "a") as f:
         f.write(logging)
-
     
 filename = sys.argv[0]
 shutil.copyfile(filename, os.path.join(save_dir, filename))
@@ -97,9 +97,11 @@ bs_val = 10
 
 #Smiling or Attractive
 if args.dataname=='celeba':
-    train_data = ImageDataset(train_set, args.dataname, 'Male', args.label, '/data/celebA/CelebA/Img/img_align_celeba', transform)
+    train_data = ImageDataset(train_set, args.dataname, 'Male', args.label, '/data/celebA/CelebA/Img/img_align_celeba'
+, transform)
 
-    valid_data = ImageDataset(valid_set, args.dataname, 'Male', args.label, '/data/celebA/CelebA/Img/img_align_celeba', transform_test)
+    valid_data = ImageDataset(valid_set, args.dataname, 'Male', args.label, '/data/celebA/CelebA/Img/img_align_celeba'
+, transform_test)
     
 elif args.dataname == 'UTK':
     train_data = ImageDataset(train_set, 'UTK', 1, 0, transform=transform)
@@ -111,24 +113,21 @@ elif args.dataname == 'dnc':
     valid_data = ImageDataset(valid_set, 'dnc', transform=transform)
     test_data = ImageDataset(test_set, 'dnc', transform=transform)
 
+trainloader = DataLoader(train_data, batch_size=bs, shuffle=True, drop_last = True, num_workers = 32, pin_memory = True)
+validloader = DataLoader(valid_data, batch_size=bs_val, shuffle=False, num_workers = 32, pin_memory = True)
+
+
 epochs = args.epochs
 samples = 10
 
 lambda_cls = args.lambda_cls
 lambda_cmi = args.lambda_fair
 
-use_proj = args.proj
-use_identity = True
-
-
 hdim = 512
 feat_dim = args.feat_dim
 channel = [64, 128, 256, 512, 512]
 encoder = nn.DataParallel(Encoder_FADES(hdim = hdim, feat_dim = feat_dim, channels = channel, image_size=img_size)).cuda()
 decoder = nn.DataParallel(Decoder_Res(hdim = hdim, channels = channel, image_size=img_size)).cuda()
-if use_proj:
-    proj = nn.DataParallel(Projector_sep(dim_in = 4*feat_dim, dim_out = feat_dim)).cuda()
-    
     
 cls_y = nn.DataParallel(Classifier(input_dim = 2*feat_dim)).cuda()
 cls_a = nn.DataParallel(Classifier(input_dim = 2*feat_dim)).cuda()
@@ -150,7 +149,6 @@ cls_param_lst = cls_y.module.get_parameters() + cls_a.module.get_parameters()
 optimizer_vae = torch.optim.Adam(vae_param_lst, lr = 1e-4, weight_decay = 5e-4)
 optimizer_cls = torch.optim.Adam(cls_param_lst, lr = 1e-3, weight_decay = 1e-4)
 optimizer_d = torch.optim.Adam(Dis.parameters(), lr = 1e-4, weight_decay = 1e-4)
-
 
 criterion = torch.nn.BCEWithLogitsLoss()
 criterion_ce = torch.nn.CrossEntropyLoss()
@@ -183,9 +181,6 @@ for epoch in range(start_epoch, epochs + 1):
     
     encoder.train()
     decoder.train()
-    if use_proj:
-        proj.train()
-    
     cls_y.train()
     cls_a.train()
     Dis.train()
@@ -287,10 +282,6 @@ for epoch in range(start_epoch, epochs + 1):
     if epoch % 10 == 0:
         encoder.eval()
         decoder.eval()
-        
-        if use_proj:
-            proj.eval()
-
         cls_y.eval()
         cls_a.eval()
     
@@ -320,88 +311,66 @@ for epoch in range(start_epoch, epochs + 1):
                 label_lst.append('Original')
                 
                 z_ent = torch.cat([z_y, z_s, z_r], dim = 1)
-                if use_proj:
-                    z_ent = proj(z_ent)
                 z = torch.cat([z_x, z_ent], dim = 1)
                 recon = decoder(z)
                 img_lst.append(torchvision.utils.make_grid(recon[: samples], nrow=samples).cpu().permute(1,2,0))
                 label_lst.append('$Recon$')
 
                 z_ent = torch.cat([z_y, z_s, z_r], dim = 1)
-                if use_proj:
-                    z_ent = proj(z_ent)
                 z = torch.cat([z_x[sample_idx].unsqueeze(0).repeat(bs_val, 1), z_ent], dim = 1)
                 recon = decoder(z)
                 img_lst.append(torchvision.utils.make_grid(recon[: samples], nrow=samples).cpu().permute(1,2,0))
                 label_lst.append('$[z_x^{' + "({})".format(sample_idx)+'}, z_y, z_s, z_r]$')
 
                 z_ent = torch.cat([z_y[sample_idx].unsqueeze(0).repeat(bs_val, 1), z_s, z_r], dim = 1)
-                if use_proj:
-                    z_ent = proj(z_ent)
                 z = torch.cat([z_x, z_ent], dim = 1)
                 recon = decoder(z)
                 img_lst.append(torchvision.utils.make_grid(recon[: samples], nrow=samples).cpu().permute(1,2,0))
                 label_lst.append( '$[z_x, z_y^{' + "({})".format(sample_idx)+'}, z_s, z_r]$')
 
                 z_ent = torch.cat([z_y, z_s[sample_idx].unsqueeze(0).repeat(bs_val, 1), z_r], dim = 1)
-                if use_proj:
-                    z_ent = proj(z_ent)
                 z = torch.cat([z_x, z_ent], dim = 1)
                 recon = decoder(z)
                 img_lst.append(torchvision.utils.make_grid(recon[: samples], nrow=samples).cpu().permute(1,2,0))
                 label_lst.append( '$[z_x, z_y, z_s^{' + "({})".format(sample_idx)+'}, z_r]$')
                 
                 z_ent = torch.cat([z_y, z_s, z_r[sample_idx].unsqueeze(0).repeat(bs_val, 1)], dim = 1)
-                if use_proj:
-                    z_ent = proj(z_ent)
                 z = torch.cat([z_x, z_ent], dim = 1)
                 recon = decoder(z)
                 img_lst.append(torchvision.utils.make_grid(recon[: samples], nrow=samples).cpu().permute(1,2,0))
                 label_lst.append( '$[z_x, z_y, z_s, z_r^{' + "({})".format(sample_idx)+'}]$')
 
                 z_ent = torch.cat([z_y, z_s[sample_idx].unsqueeze(0).repeat(bs_val, 1), z_r[sample_idx].unsqueeze(0).repeat(bs_val, 1)], dim = 1)
-                if use_proj:
-                    z_ent = proj(z_ent)
                 z = torch.cat([z_x, z_ent], dim = 1)
                 recon = decoder(z)
                 img_lst.append(torchvision.utils.make_grid(recon[: samples], nrow=samples).cpu().permute(1,2,0))
                 label_lst.append( '$[z_x, z_y, z_s^{' + "({})".format(sample_idx)+'}, z_r^{' + "({})".format(sample_idx)+'}]$')
                 
                 z_ent = torch.cat([z_y, z_s, z_r], dim = 1)
-                if use_proj:
-                    z_ent = proj(z_ent)
                 z = torch.cat([z_x, z_ent[sample_idx].unsqueeze(0).repeat(bs_val, 1)], dim = 1)
                 recon = decoder(z)
                 img_lst.append(torchvision.utils.make_grid(recon[: samples], nrow=samples).cpu().permute(1,2,0))
                 label_lst.append( '$[z_x, z_y^{' + "({})".format(sample_idx)+'}, z_s^{' + "({})".format(sample_idx)+'}, z_r^{' + "({})".format(sample_idx)+'}]$')
 
                 z_ent = torch.cat([z_y, z_s, z_r], dim = 1)
-                if use_proj:
-                    z_ent = proj(z_ent)
                 z = torch.cat([torch.randn_like(z_x).cuda(), z_ent], dim = 1)
                 recon = decoder(z)
                 img_lst.append(torchvision.utils.make_grid(recon[: samples], nrow=samples).cpu().permute(1,2,0))
                 label_lst.append( '[$N, z_y, z_s, z_r]$')
                 
                 z_ent = torch.cat([torch.randn_like(z_y).cuda(), z_s, z_r], dim = 1)
-                if use_proj:
-                    z_ent = proj(z_ent)
                 z = torch.cat([torch.randn_like(z_x).cuda(), z_ent], dim = 1)
                 recon = decoder(z)
                 img_lst.append(torchvision.utils.make_grid(recon[: samples], nrow=samples).cpu().permute(1,2,0))
                 label_lst.append( '[$z_x, N, z_s, z_r]$')
                 
                 z_ent = torch.cat([z_y, torch.randn_like(z_s).cuda(), z_r], dim = 1)
-                if use_proj:
-                    z_ent = proj(z_ent)
                 z = torch.cat([torch.randn_like(z_x).cuda(), z_ent], dim = 1)
                 recon = decoder(z)
                 img_lst.append(torchvision.utils.make_grid(recon[: samples], nrow=samples).cpu().permute(1,2,0))
                 label_lst.append( '[$z_x, z_y, N, z_r]$')
                 
                 z_ent = torch.cat([z_y, z_s, torch.randn_like(z_r).cuda()], dim = 1)
-                if use_proj:
-                    z_ent = proj(z_ent)
                 z = torch.cat([z_x, z_ent], dim = 1)
                 recon = decoder(z)
                 img_lst.append(torchvision.utils.make_grid(recon[: samples], nrow=samples).cpu().permute(1,2,0))
@@ -418,9 +387,9 @@ for epoch in range(start_epoch, epochs + 1):
                 for i in range(samples):
                     tick = ''
                     if y_test[i] == 1:
-                        tick += 'Smiling, '
+                        tick += f'{args.label.split("_")[0]}, '
                     else:
-                        tick += 'Not Smiling, '
+                        tick += f'Not {args.label.split("_")[0]}, '
                     if s_test[i] == 1:
                         tick += 'Male'
                     else:
@@ -439,4 +408,3 @@ for epoch in range(start_epoch, epochs + 1):
     torch.save({'state_dict':cls_y.state_dict(), 'epoch':epoch}, os.path.join(save_dir, 'cls_y.pth'))
     torch.save({'state_dict':cls_a.state_dict(), 'epoch':epoch}, os.path.join(save_dir, 'cls_a.pth'))
     torch.save({'state_dict':Dis.state_dict(), 'epoch':epoch}, os.path.join(save_dir, 'dis.pth'))
-
