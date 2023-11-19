@@ -40,7 +40,7 @@ def CMI_loss(cls, z_y, z_r, s_batch, beta=0.5):
 
     H_y_cond_za /= -s_batch.shape[0]
 
-    I_y_az = beta * H_y_cond_z - H_y_cond_za
+    I_y_az = (1-beta) * H_y_cond_z - H_y_cond_za
     
     return I_y_az
 
